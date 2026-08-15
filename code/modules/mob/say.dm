@@ -174,7 +174,14 @@
 		emote(copytext_char(message, 2), intentional = !forced, custom_me = TRUE)
 		return 1
 
-///Check if the mob has a hivemind channel
+/mob/proc/check_whisper(message, forced)
+	if(copytext_char(message, 1, 2) == "+")
+		var/text = copytext(message, 2)
+		var/boldcheck = findtext_char(text, "+")
+		whisper(copytext_char(message, boldcheck ? 1 : 2), sanitize = FALSE)
+		return 1
+
+///Check if the mob has a hivemind channelI 
 /mob/proc/hivecheck()
 	return 0
 
