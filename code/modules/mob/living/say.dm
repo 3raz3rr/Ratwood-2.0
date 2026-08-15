@@ -142,8 +142,11 @@ GLOBAL_LIST_INIT(department_radio_keys, list(
 	if(stat == DEAD)
 		say_dead(original_message)
 		return
-
+	
 	if(check_emote(original_message, forced) || !can_speak_basic(original_message, ignore_spam, forced))
+		return
+
+	if(check_whisper(original_message, forced) || !can_speak_basic(original_message, ignore_spam, forced))
 		return
 
 	//RATWOOD SUBTLER START
