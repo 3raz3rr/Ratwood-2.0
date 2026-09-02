@@ -324,7 +324,16 @@
 
 //Returns a string with the first element of the string capitalized.
 /proc/capitalize(t as text)
-	return uppertext(copytext(t, 1, 2)) + copytext(t, 2)
+	if (!length(t))
+		return t
+	var/first = text2ascii_char(t, 1)
+	var/rest = copytext_char(t, 2)
+	// Cyrillic || Ascii
+	if ((first >= 1072 && first <= 1103) || (first >= 97 && first <= 122))
+		return ascii2text(first - 32) + rest
+	if (first == 1105)
+		return "Ё" + rest
+	return t
 
 //Centers text by adding spaces to either side of the string.
 /proc/dd_centertext(message, length)
