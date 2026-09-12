@@ -1,5 +1,6 @@
 # Daily fork sync from Rotwood-Vale/Ratwood-2.0 into this repo's main.
-# After the first push: enable Actions on the fork, then run this workflow once by hand.
+# Uses a real git merge instead of merge-upstream: GITHUB_TOKEN cannot
+# update workflow files, and that 422 used to abort the whole official pull.
 name: Sync upstream
 
 on:
@@ -19,20 +20,42 @@ jobs:
     name: Merge Rotwood-Vale/main
     runs-on: ubuntu-24.04
     steps:
-      - name: Sync fork
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge Rotwood-Vale/main
         run: |
-          set +e
-          out="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/merge-upstream" -f branch=main 2>&1)"
-          status=$?
-          echo "$out"
-          if [ "$status" -eq 0 ]; then
-            exit 0
-          fi
-          if echo "$out" | grep -qiE 'already up.to.date|not out of date|Nothing to sync'; then
+          set -euo pipefail
+          git config user.name "ratwood-ci[bot]"
+          git config user.email "179393467+ratwood-ci[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/Rotwood-Vale/Ratwood-2.0.git
+          git fetch --no-tags upstream main
+
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
             echo "Already up to date."
             exit 0
           fi
-          echo "::error::Upstream sync failed. On a conflict, merge Rotwood-Vale/main into this fork locally."
-          exit "$status"
+
+          if ! git merge --no-commit --no-ff FETCH_HEAD; then
+            echo "::error::Merge conflict with Rotwood-Vale/main. Resolve locally, keeping Grimrock-only files."
+            git merge --abort || true
+            exit 1
+          fi
+
+          # GITHUB_TOKEN cannot push changes under .github/workflows. Drop those
+          # so official game code still lands; CI yaml is caught up manually.
+          git reset HEAD -- .github/workflows
+          git checkout -- .github/workflows || true
+          git clean -fd -- .github/workflows
+
+          if git diff --cached --quiet && git diff --quiet; then
+            echo "Only upstream workflow files changed; nothing to push."
+            git merge --abort
+            exit 0
+          fi
+
+          git commit -m "Merge branch 'Rotwood-Vale:main' into main"
+          git push origin HEAD:main
